@@ -145,3 +145,39 @@ title('Temperature regulation error');
 save_fig(fig, figdir, '6_rmse_bar');
 
 fprintf('\nFigures saved in %s\n', figdir);
+
+% ------------------------------------------------------------------------
+% Local helper functions (kept in this file so the script is self-contained)
+
+function r = pid_run(p, scenario, Tref_fun)
+% Closed-loop PID simulation that also logs the P, I and D terms.
+cyc = drive_cycle(scenario);
+t = 0:p.dt:cyc.T_end; n = numel(t);
+x = cyc.x0; mem = [];
+r.t = t; r.Tc = zeros(1, n); r.Tref = zeros(1, n); r.u = zeros(3, n);
+r.e = zeros(1, n); r.P = r.e; r.I = r.e; r.D = r.e; r.y = r.e; r.load = r.e;
+for k = 1:n
+    if ~isempty(Tref_fun), p.T_ref = Tref_fun(t(k)); end
+    d = cyc.d(t(k));
+    [u, mem] = ctrl_pid(x, d, mem, p);
+    r.Tc(k) = x(1); r.Tref(k) = p.T_ref; r.u(:, k) = u; r.e(k) = x(1) - p.T_ref;
+    r.P(k) = mem.P; r.I(k) = mem.I; r.D(k) = mem.D; r.y(k) = mem.y;
+    r.load(k) = d(2) / p.Tq_max;
+    x = rk4_step(x, u, d, p.dt, p);
+end
+end
+
+function m = step_metrics(r, t_step, t_end)
+% Peak deviation, 1 K settling time and steady-state error after a step.
+idx = r.t >= t_step & r.t < t_end;
+e   = r.Tc(idx) - r.Tref(idx);
+tt  = r.t(idx);
+[~, ip] = max(abs(e)); m.peak = e(ip);
+out = find(abs(e) > 1, 1, 'last');
+if isempty(out), m.ts = 0; else, m.ts = tt(out) - t_step; end
+m.ess = mean(e(tt > t_end - 120));
+end
+
+function save_fig(fig, figdir, name)
+print(fig, fullfile(figdir, [name '.png']), '-dpng', '-r150');
+end
