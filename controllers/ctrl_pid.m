@@ -10,6 +10,8 @@ function [u, mem] = ctrl_pid(x, d, mem, p) %#ok<INUSL>
 %   Discrete PID, derivative on measurement with a first-order filter,
 %   anti-windup by conditional integration (integrator frozen when the
 %   output is saturated and the error would push it further).
+%   Set p.pid.antiwindup = false to see integrator windup.
+%   mem.P, mem.I, mem.D, mem.y hold the latest terms for plotting.
 g  = p.pid;
 Tc = x(1);
 e  = Tc - p.T_ref;                 % positive when too hot -> more cooling
@@ -24,10 +26,12 @@ y_unsat = g.Kp*e + mem.I + mem.D;
 y = min(max(y_unsat, 0), 3);
 
 % conditional integration (anti-windup)
-if ~((y_unsat >= 3 && e > 0) || (y_unsat <= 0 && e < 0))
+aw = ~isfield(g, 'antiwindup') || g.antiwindup;
+if ~aw || ~((y_unsat >= 3 && e > 0) || (y_unsat <= 0 && e < 0))
     mem.I = mem.I + g.Ki * e * g.Ts;
 end
-mem.I = min(max(mem.I, -1), 3);
+if aw, mem.I = min(max(mem.I, -1), 3); end
+mem.P = g.Kp*e; mem.y = y;
 
 xv = min(max(y, 0), 1);
 up = p.u_min(2) + (1 - p.u_min(2)) * min(max(y - 1, 0), 1);

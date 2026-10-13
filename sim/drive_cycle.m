@@ -6,6 +6,7 @@ function cyc = drive_cycle(name)
 %     'hill'       long full-load climb on a hot day, 38 degC
 %     'urban'      stop-and-go city delivery, 30 degC
 %     'coldstart'  warm-up from 5 degC soak
+%     'step'       engine-load step test (30 -> 80 -> 30 %), 30 degC
 %
 %   cyc.d(t) returns the disturbance vector [N; Tq; v; T_amb] for a scalar
 %   or row vector t (one column per time). cyc.d is also what the NMPC
@@ -41,6 +42,14 @@ switch lower(name)
         end
         tb = [tb, 150*nrep]; vb = [vb, 0]; Nb = [Nb, 600]; Lb = [Lb, 0.05];
         Ta = 30;  x0 = [88; 60; 92];  T_end = 1800;
+        Lfun = @(t, L) L;
+    case 'step'
+        % constant 80 km/h, engine load step 30 % -> 80 % -> 30 %
+        tb = [0    600   605   1500  1505  2400];
+        vb = [80   80    80    80    80    80  ];
+        Nb = [1300 1300  1300  1300  1300  1300];
+        Lb = [0.30 0.30  0.80  0.80  0.30  0.30];
+        Ta = 30;  x0 = [90; 55; 95];  T_end = 2400;
         Lfun = @(t, L) L;
     case 'coldstart'
         tb = [0    120   180   900   960   1800];

@@ -71,6 +71,7 @@ p.pid.Ki  = 0.006;        % [1/(K s)]
 p.pid.Kd  = 2.0;          % [s/K]
 p.pid.Tf  = 10;           % derivative filter time constant [s]
 p.pid.Ts  = 1;            % sample time [s]
+p.pid.antiwindup = true;  % conditional-integration anti-windup
 
 % ---------------- NMPC ----------------
 p.mpc.Ts      = 5;        % controller sample time = prediction step [s]
